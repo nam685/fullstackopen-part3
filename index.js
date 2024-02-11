@@ -9,8 +9,8 @@ app.use(express.static('dist'))
 app.use(express.json())
 app.use(cors())
 app.use(morgan('tiny', {
-  skip: function (req, res) {
-    return req.method === "POST"
+  skip: function (req) {
+    return req.method === 'POST'
   }
 }))
 
@@ -54,15 +54,15 @@ app.delete('/api/persons/:id', (request, response, next) => {
     .catch(error => next(error))
 })
 
-morgan.token('body', function (request, response) { return JSON.stringify(request.body) })
+morgan.token('body', function (request) { return JSON.stringify(request.body) })
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
 
 app.post('/api/persons', (request, response, next) => {
   const body = request.body
 
   if (!body.name || !body.number) {
-    return response.status(400).json({ 
-      error: 'name or number missing' 
+    return response.status(400).json({
+      error: 'name or number missing'
     })
   }
 
@@ -82,8 +82,8 @@ app.put('/api/persons/:id', (request, response, next) => {
   const body = request.body
 
   if (!body.name || !body.number) {
-    return response.status(400).json({ 
-      error: 'name or number missing' 
+    return response.status(400).json({
+      error: 'name or number missing'
     })
   }
 
@@ -92,7 +92,7 @@ app.put('/api/persons/:id', (request, response, next) => {
     number: body.number,
   }
 
-  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+  Person.findByIdAndUpdate(request.params.id, person, { new: true, runValidators: true, context: 'query' })
     .then(updatedPerson => {
       response.json(updatedPerson)
     })
@@ -111,7 +111,9 @@ const errorHandler = (error, request, response, next) => {
   console.error(error.message)
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
-  } 
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  }
   next(error)
 }
 // this has to be the last loaded middleware.
